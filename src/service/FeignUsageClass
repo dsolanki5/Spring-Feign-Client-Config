@@ -1,0 +1,38 @@
+@Slf4j
+@Component
+@RefreshScope
+public class SomeServiceHelperClass {
+
+
+	@Autowired
+	private XyzServiceClientInterface xyzServiceClientInterface;
+	
+	
+	public SomeResponseClass someMethodName(SomeDeviceRequest request,
+													String url,String sessionRef) {
+		Instant start = Instant.now();
+		SomeDeviceResponse response = null;
+		HttpHeaders httpHeaders = methoneUtil.createHeaders(null);
+		HttpEntity<SomeDeviceResponse> requestEntity = new HttpEntity(request, httpHeaders);
+		log.info("URL: "+url);
+		try {
+		
+		//  Here we are calling the Feign client interface's method: --->
+		
+			ResponseEntity<SomeDeviceResponse> responseEntity = xyzServiceClientInterface.getResponse(httpHeaders,request);
+			
+			if (HttpStatus.OK.equals(responseEntity.getStatusCode())) {
+				response = responseEntity.getBody();
+			} else {
+				log.error("{}: api error response:  {}", GeneralUtil.getSanitizedParam(sessionRef),
+						 				GeneralUtil.getSanitizedParam(String.valueOf(responseEntity.getStatusCode())));
+				
+			}
+		} catch (RestClientException e) {
+			log.error("Error ", e);
+
+		}
+		log.info("performance-log - Helper -" + GeneralUtil.getSanitizedParam(sessionRef) + " Duration "
+				+ Duration.between(start, Instant.now()).toMillis());
+		return response;
+	}

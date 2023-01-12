@@ -1,0 +1,64 @@
+/**
+* This is Optional class
+*
+**/
+
+package com.services.openfeign.config;
+
+import feign.Logger;
+import feign.Request;
+import feign.okhttp.OkHttpClient;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.util.concurrent.TimeUnit;
+
+@Slf4j
+public class DefaultFeignConfig {
+
+    @Autowired
+    private Environment env;
+
+    /**Override the default ssl validation disabled client**/
+
+    @Bean
+    public OkHttpClient client() {
+        okhttp3.OkHttpClient.Builder builder = new okhttp3.OkHttpClient().newBuilder();
+        builder.hostnameVerifier(new HostnameVerifier() {
+            @Override
+            public boolean verify(String hostname, SSLSession session) {
+                return true;
+            }
+        });
+        // Proxy config added for calls from local environment
+        if("local".equals(env.getActiveProfiles()[0])){
+            log.info("Proxy applied at feign, env - {} ", env.getActiveProfiles()[0]);
+            Proxy wccProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("some.proxy.domain.com",
+                    "9090")); //9090 is port number
+            return new OkHttpClient(builder.proxy(wccProxy).build());
+        }else{
+            log.info("Proxy not applied at feign, env - {} ", env.getActiveProfiles()[0]);
+            return new OkHttpClient(builder.build());
+        }
+
+    }
+
+
+    @Bean
+    Logger.Level feignLoggerLevel(@Value("${feign.client.config.default.loggerLevel}") String loggerLevel) {
+        return Logger.Level.valueOf(loggerLevel);
+    }
+
+    @Bean
+    public Request.Options options(@Value("${feign.client.config.default.connectTimeout}") long connectTimeout,
+                                            @Value("${feign.client.config.default.readTimeout}") long readTimeout) {
+        return new Request.Options(connectTimeout, TimeUnit.MILLISECONDS, readTimeout, TimeUnit.MILLISECONDS, true);
+    }
+
+}
